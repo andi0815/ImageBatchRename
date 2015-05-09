@@ -5,6 +5,7 @@ package amo.media;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -21,6 +22,9 @@ import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import amo.media.io.ImageFilter;
+import amo.media.io.VideoFilter;
+
 /**
  * @author Andreas Monger (andreas.monger@gmail.com)
  * @date 09.05.2015
@@ -35,22 +39,34 @@ public class BatchProcessor {
     private static SimpleDateFormat newFileprefix = new SimpleDateFormat("yyyyMMdd_HH'h'mm");
     private static SimpleDateFormat newFoldername = new SimpleDateFormat("yyyyMM' - Handybilder'");
     
+    private static ImageFilter      imageFilter   = new ImageFilter();
+    private static VideoFilter      videoFilter   = new VideoFilter();
+    
     public static void startBatchRun(File folderToProcess) {
 
-        File[] allTestFiles = folderToProcess.listFiles();
+        File[] allTestFiles = folderToProcess.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File directory, String filename) {
+                return imageFilter.accept(directory, filename) || videoFilter.accept(directory, filename);
+            }
+        });
         
         Tika tika = new Tika();
         ContentHandler handler = new DefaultHandler();
         AutoDetectParser parser = new AutoDetectParser();
         int fileCount = 0;
         for (File file : allTestFiles) {
-            FileInputStream inStream;
             try {
-                inStream = new FileInputStream(file);
-                String mimeType = tika.detect(inStream);
+                String mimeType = null;
                 Metadata metadata = new Metadata();
-                metadata.set(Metadata.CONTENT_TYPE, mimeType);
-                parser.parse(new FileInputStream(file), handler, metadata, new ParseContext());
+                try (
+                        FileInputStream inStream = new FileInputStream(file);
+                        FileInputStream inStream2 = new FileInputStream(file);) {
+
+                    mimeType = tika.detect(inStream);
+                    metadata.set(Metadata.CONTENT_TYPE, mimeType);
+                    parser.parse(inStream2, handler, metadata, new ParseContext());
+                }
                 processFile(fileCount, file, mimeType, metadata);
                 fileCount++;
             }
