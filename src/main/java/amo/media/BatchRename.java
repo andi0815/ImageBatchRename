@@ -12,29 +12,35 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
+import org.apache.log4j.Priority;
 
 /**
  * @author Andreas Monger (andreas.monger@gmail.com)
  * @date 09.05.2015
  */
 public class BatchRename {
-    
+
     /** Logger Object for this Class */
     private static final Logger LOGGER = Logger.getLogger(BatchRename.class);
-
+    
+    @SuppressWarnings("deprecation")
     public static void main(String[] args) {
-
-        // Set up a log configuration that logs on the console.
-        BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%5p|%d] %m - %F:%L%n"), "System.out"));
         
+        // Set up a log configuration that logs on the console.
+        ConsoleAppender consoleAppender = new ConsoleAppender(new PatternLayout("[%5p|%d] %m - %F:%L%n"), "System.out");
+        consoleAppender.setThreshold(Priority.INFO);
+        BasicConfigurator.configure(consoleAppender);
+
         // create Options object
         Options options = new Options();
-        // // add t option
-        // options.addOption("t", false, "display current time");
-        
+        options.addOption("v", false, "verbose mode");
+
         CommandLineParser parser = new DefaultParser();
         try {
             CommandLine cmd = parser.parse(options, args);
+            if (cmd.hasOption("v")) {
+                consoleAppender.setThreshold(Priority.DEBUG);
+            }
             String[] cliArgs = cmd.getArgs();
             if (cliArgs == null || cliArgs.length == 0) {
                 printUsage(options, 1);
@@ -45,7 +51,7 @@ public class BatchRename {
                 printUsage(options, 1);
             }
             printConfig(folderToProcess);
-            
+
             BatchProcessor.startBatchRun(folderToProcess);
         }
         catch (ParseException e) {
@@ -53,12 +59,12 @@ public class BatchRename {
             printUsage(options, 1);
         }
     }
-
+    
     private static void printConfig(File folderToProcess) {
         LOGGER.info("Starting with folder: " + folderToProcess);
-
+        LOGGER.debug("Verbose mode enabled");
     }
-    
+
     /**
      * Print tool usage to console
      *
