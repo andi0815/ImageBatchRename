@@ -79,8 +79,7 @@ public class BatchProcessor {
     private static void processFile(int fileCount, File file, String mimeType, Metadata metadata) throws ParseException, IOException {
         String creationDate = metadata.get("Creation-Date");
         Date parsedDate = importFormat.parse(creationDate);
-        LOGGER.info(" #" + fileCount + ": \t" + file.getName() + "\t " + mimeType + "\t Creation-Date: " + creationDate + "\t IS: "
-                + parsedDate);
+        LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t " + mimeType + "\t Creation-Date: " + creationDate + "\t IS: " + parsedDate);
         // Create folder for new files
         File newFolder = new File(file.getParent() + File.separator + newFoldername.format(parsedDate));
         if (!newFolder.exists()) {
@@ -92,13 +91,6 @@ public class BatchProcessor {
         // move file
         File newFile = new File(newFolder, newFileprefix.format(parsedDate) + "_" + file.getName());
         FileUtils.moveFile(file, newFile);
-        // if (file.renameTo(newFile)) {
         LOGGER.info(" #" + fileCount + ": \t" + file.getName() + "\t (" + creationDate + ")\t renamed to: '" + newFile + "'");
-        // }
-        // else {
-        // LOGGER.warn("Couldn't rename file '" + file.getAbsolutePath() +
-        // " to: '" + newFile + "'");
-        // }
-
     }
 }
