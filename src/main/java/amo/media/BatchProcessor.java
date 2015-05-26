@@ -42,7 +42,7 @@ public class BatchProcessor {
     private static ImageFilter      imageFilter   = new ImageFilter();
     private static VideoFilter      videoFilter   = new VideoFilter();
     
-    public static void startBatchRun(File folderToProcess) {
+    public static void startBatchRun(File folderToProcess, Statistics statistics) {
 
         File[] allTestFiles = folderToProcess.listFiles(new FilenameFilter() {
             @Override
@@ -57,6 +57,7 @@ public class BatchProcessor {
         }
         else {
             LOGGER.info("Processing " + allTestFiles.length + " files");
+            statistics.setNumFiles(allTestFiles.length);
         }
 
         Tika tika = new Tika();
@@ -65,7 +66,7 @@ public class BatchProcessor {
         int fileCount = 0;
         float nextLog = 0.1f;
         boolean reached50percent = false;
-        System.out.print("Progress: 0%");
+        System.out.print("Progress: 0% ");
         for (File file : allTestFiles) {
             try {
                 String mimeType = null;
@@ -84,23 +85,23 @@ public class BatchProcessor {
                 fileCount++;
                 if (fileCount / (float) allTestFiles.length > nextLog) {
                     if (nextLog >= .5f && !reached50percent) {
-                        System.out.print("50%");
+                        System.out.print("50% ");
                         reached50percent = true;
                     }
                     else {
-                        System.out.print(".");
+                        System.out.print(". ");
                     }
                     float fileCountBased = (int) ((fileCount / (float) allTestFiles.length) * 100 + 10) / 100f;
                     nextLog = Math.max(fileCountBased, nextLog + .1f);
                 }
-                if (fileCount == allTestFiles.length) {
-                    System.out.println("100%");
-                }
             }
             catch (IOException | SAXException | TikaException | ParseException e) {
-                LOGGER.warn("Failed to process file '" + file + "'. Cause: " + e.getMessage());
+                LOGGER.debug("Failed to process file '" + file + "'. Cause: " + e.getMessage());
+                System.out.print("x ");
+                statistics.logError(file, e);
             }
         }
+        System.out.println("100%");
     }
 
     private static void processFile(int fileCount, File file, String mimeType, Metadata metadata) throws ParseException, IOException {

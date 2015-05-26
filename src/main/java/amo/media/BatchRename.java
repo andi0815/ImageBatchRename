@@ -67,13 +67,16 @@ public class BatchRename {
                 printUsage(options, 1);
             }
             printConfig(folderToProcess);
-            
-            BatchProcessor.startBatchRun(folderToProcess);
+
+            Statistics statistics = new Statistics();
+            BatchProcessor.startBatchRun(folderToProcess, statistics);
+            statistics.printStatistics();
         }
         catch (ParseException e) {
             LOGGER.error("Could not parse input.", e);
             printUsage(options, 1);
         }
+        LOGGER.info("DONE.");
     }
 
     private static void printConfig(File folderToProcess) {
