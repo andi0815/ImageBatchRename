@@ -6,6 +6,7 @@ This tool should help me clean up me automatic uploads of my smartphone to my cl
 * write at least one lambda statement!
 * Can this be done with only one instream per file?
 * package me nicely
+* improve progress output by adding a progress listener to statistics
 
 
 
