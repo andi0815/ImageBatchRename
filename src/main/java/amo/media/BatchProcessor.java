@@ -51,10 +51,21 @@ public class BatchProcessor {
             }
         });
         
+        if (allTestFiles.length == 0) {
+            LOGGER.info("No files to move found.");
+            return;
+        }
+        else {
+            LOGGER.info("Processing " + allTestFiles.length + " files");
+        }
+
         Tika tika = new Tika();
         ContentHandler handler = new DefaultHandler();
         AutoDetectParser parser = new AutoDetectParser();
         int fileCount = 0;
+        float nextLog = 0.1f;
+        boolean reached50percent = false;
+        System.out.print("Progress: 0%");
         for (File file : allTestFiles) {
             try {
                 String mimeType = null;
@@ -68,7 +79,23 @@ public class BatchProcessor {
                     parser.parse(inStream2, handler, metadata, new ParseContext());
                 }
                 processFile(fileCount, file, mimeType, metadata);
+
+                // show progress
                 fileCount++;
+                if (fileCount / (float) allTestFiles.length > nextLog) {
+                    if (nextLog >= .5f && !reached50percent) {
+                        System.out.print("50%");
+                        reached50percent = true;
+                    }
+                    else {
+                        System.out.print(".");
+                    }
+                    float fileCountBased = (int) ((fileCount / (float) allTestFiles.length) * 100 + 10) / 100f;
+                    nextLog = Math.max(fileCountBased, nextLog + .1f);
+                }
+                if (fileCount == allTestFiles.length) {
+                    System.out.println("100%");
+                }
             }
             catch (IOException | SAXException | TikaException | ParseException e) {
                 LOGGER.warn("Failed to process file '" + file + "'. Cause: " + e.getMessage());
@@ -91,6 +118,6 @@ public class BatchProcessor {
         // move file
         File newFile = new File(newFolder, newFileprefix.format(parsedDate) + "_" + file.getName());
         FileUtils.moveFile(file, newFile);
-        LOGGER.info(" #" + fileCount + ": \t" + file.getName() + "\t (" + creationDate + ")\t renamed to: '" + newFile + "'");
+        LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t (" + creationDate + ")\t renamed to: '" + newFile + "'");
     }
 }
