@@ -14,6 +14,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.FileAppender;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.Priority;
@@ -25,19 +26,21 @@ import org.apache.log4j.Priority;
 public class BatchRename {
     
     /** Logger Object for this Class */
-    private static final Logger           LOGGER      = Logger.getLogger(BatchRename.class);
-    private static final PatternLayout    LOG_PATTERN = new PatternLayout("[%5p|%d] %m - %F:%L%n");
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("YYYYMMdd-HH'h'MM");
+    private static final Logger           LOGGER              = Logger.getLogger(BatchRename.class);
+    private static final PatternLayout    FILE_LOG_PATTERN    = new PatternLayout("[%5p|%d] %m - %F:%L%n");
+    private static final PatternLayout    CONSOLE_LOG_PATTERN = new PatternLayout("%m%n");
+    private static final SimpleDateFormat DATE_FORMAT         = new SimpleDateFormat("YYYYMMdd-HH'h'mm");
 
     @SuppressWarnings("deprecation")
     public static void main(String[] args) {
 
-        ConsoleAppender consoleAppender = new ConsoleAppender(LOG_PATTERN, "System.out");
+        ConsoleAppender consoleAppender = new ConsoleAppender(CONSOLE_LOG_PATTERN, "System.out");
         consoleAppender.setThreshold(Priority.INFO);
         BasicConfigurator.configure(consoleAppender);
         // logfile appender
         try {
-            FileAppender fileAppender = new FileAppender(LOG_PATTERN, "batchrename_" + DATE_FORMAT.format(new Date()) + ".log", true);
+            FileAppender fileAppender = new FileAppender(FILE_LOG_PATTERN, "batchrename_" + DATE_FORMAT.format(new Date()) + ".log", true);
+            fileAppender.setThreshold(Level.DEBUG);
             Logger.getRootLogger().addAppender(fileAppender);
         }
         catch (IOException e) {
