@@ -95,7 +95,7 @@ public class BatchProcessor {
                     nextLog = Math.max(fileCountBased, nextLog + .1f);
                 }
             }
-            catch (IOException | SAXException | TikaException | ParseException e) {
+            catch (IOException | SAXException | TikaException | RuntimeException e) {
                 LOGGER.debug("Failed to process file '" + file + "'. Cause: " + e.getMessage());
                 System.out.print("x ");
                 statistics.logError(file, e);
@@ -104,21 +104,32 @@ public class BatchProcessor {
         System.out.println("100%");
     }
 
-    private static void processFile(int fileCount, File file, String mimeType, Metadata metadata) throws ParseException, IOException {
-        String creationDate = metadata.get("Creation-Date");
-        Date parsedDate = importFormat.parse(creationDate);
-        LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t " + mimeType + "\t Creation-Date: " + creationDate + "\t IS: " + parsedDate);
-        // Create folder for new files
-        File newFolder = new File(file.getParent() + File.separator + newFoldername.format(parsedDate));
-        if (!newFolder.exists()) {
-            if (!newFolder.mkdir()) {
-                LOGGER.warn("Failed to create subdirectory '" + newFolder + "' for file: '" + file.getName() + "'. skipping...");
+    private static void processFile(int fileCount, File file, String mimeType, Metadata metadata) throws RuntimeException {
+        String creationDate = null;
+        Date parsedDate = null;
+        File newFile = null;
+        try {
+            creationDate = metadata.get("Creation-Date");
+            if (creationDate == null) { throw new IllegalStateException("Creation-Date is not present in file: " + file); }
+            LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t " + mimeType + "\t Creation-Date: " + creationDate + "\t IS: " + parsedDate);
+            parsedDate = importFormat.parse(creationDate);
+            // Create folder for new files
+            File newFolder = new File(file.getParent() + File.separator + newFoldername.format(parsedDate));
+            if (!newFolder.exists()) {
+                if (!newFolder.mkdir()) {
+                    LOGGER.warn("Failed to create subdirectory '" + newFolder + "' for file: '" + file.getName() + "'. skipping...");
+                }
             }
+            
+            // move file
+            newFile = new File(newFolder, newFileprefix.format(parsedDate) + "_" + file.getName());
+            FileUtils.moveFile(file, newFile);
+            LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t (" + creationDate + ")\t renamed to: '" + newFile + "'");
         }
-        
-        // move file
-        File newFile = new File(newFolder, newFileprefix.format(parsedDate) + "_" + file.getName());
-        FileUtils.moveFile(file, newFile);
-        LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t (" + creationDate + ")\t renamed to: '" + newFile + "'");
+        catch (ParseException | IOException e) {
+            String message = "Failed to process file #" + fileCount + ": " + file.getName() + " newFile=" + newFile + " \t" + mimeType
+                    + "\t Creation-Date: " + creationDate + "\t IS: " + parsedDate;
+            throw new RuntimeException(message, e);
+        }
     }
 }
