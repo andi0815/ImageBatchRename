@@ -24,15 +24,17 @@ import org.apache.log4j.Priority;
  * @date 09.05.2015
  */
 public class BatchRename {
-    
+
     /** Logger Object for this Class */
     private static final Logger           LOGGER              = Logger.getLogger(BatchRename.class);
     private static final PatternLayout    FILE_LOG_PATTERN    = new PatternLayout("[%5p|%d] %m - %F:%L%n");
     private static final PatternLayout    CONSOLE_LOG_PATTERN = new PatternLayout("%m%n");
     private static final SimpleDateFormat DATE_FORMAT         = new SimpleDateFormat("YYYYMMdd-HH'h'mm");
-
+    
     @SuppressWarnings("deprecation")
     public static void main(String[] args) {
+        
+        Integer maxFiles = null;
 
         ConsoleAppender consoleAppender = new ConsoleAppender(CONSOLE_LOG_PATTERN, "System.out");
         consoleAppender.setThreshold(Priority.INFO);
@@ -46,16 +48,20 @@ public class BatchRename {
         catch (IOException e) {
             LOGGER.error("Couldn't setup file appender.", e);
         }
-        
+
         // create Options object
         Options options = new Options();
         options.addOption("v", false, "verbose mode");
-        
+        options.addOption("max", "maxFiles", true, "Maximum number of files to process");
+
         CommandLineParser parser = new DefaultParser();
         try {
             CommandLine cmd = parser.parse(options, args);
             if (cmd.hasOption("v")) {
                 consoleAppender.setThreshold(Priority.DEBUG);
+            }
+            if (cmd.hasOption("max")) {
+                maxFiles = Integer.valueOf(cmd.getOptionValue("max"));
             }
             String[] cliArgs = cmd.getArgs();
             if (cliArgs == null || cliArgs.length == 0) {
@@ -66,10 +72,10 @@ public class BatchRename {
                 LOGGER.error("Folder does not exist or is not a folder: '" + folderToProcess + "'");
                 printUsage(options, 1);
             }
-            printConfig(folderToProcess);
-
+            printConfig(folderToProcess, maxFiles);
+            
             Statistics statistics = new Statistics();
-            BatchProcessor.startBatchRun(folderToProcess, statistics);
+            BatchProcessor.startBatchRun(folderToProcess, maxFiles, statistics);
             statistics.printStatistics();
         }
         catch (ParseException e) {
@@ -78,12 +84,15 @@ public class BatchRename {
         }
         LOGGER.info("DONE.");
     }
-
-    private static void printConfig(File folderToProcess) {
-        LOGGER.info("Starting with folder: " + folderToProcess);
+    
+    private static void printConfig(File folderToProcess, Integer maxFiles) {
+        LOGGER.info("Starting with folder: \t\t\t" + folderToProcess);
+        if (maxFiles != null) {
+            LOGGER.info("Maximum number of files to process: \t" + maxFiles);
+        }
         LOGGER.debug("Verbose mode enabled");
     }
-    
+
     /**
      * Print tool usage to console
      *

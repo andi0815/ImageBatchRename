@@ -18,19 +18,19 @@ import org.apache.log4j.Logger;
  * @date 26.05.2015
  */
 public class Statistics implements ProgressListener {
-
+    
     /** Logger Object for this Class */
     private static final Logger LOGGER           = Logger.getLogger(Statistics.class);
-    
+
     private List<ErrorRecord>   errors           = new ArrayList<ErrorRecord>();
     private Integer             numFiles;
     private int                 progessCounter;
     Iterator<Integer>           precentagesToLog = Arrays.asList(new Integer[] { 10, 20, 30, 40, 50, 60, 70, 80, 90 }).iterator();
     int                         nextPercentage   = this.precentagesToLog.next();
-    
+
     public Statistics() {
     }
-
+    
     /**
      * Creates a new instance
      *
@@ -44,50 +44,51 @@ public class Statistics implements ProgressListener {
         System.out.print("x");
         this.progessCounter++;
     }
-
+    
     public List<ErrorRecord> getErrors() {
         return this.errors;
     }
-
+    
     public Integer getNumFiles() {
         return this.numFiles;
     }
-
+    
     public void setNumFiles(Integer numFiles) {
         this.numFiles = numFiles;
     }
-    
+
     /**
      * Prints a final summary to logger
      */
     public void printStatistics() {
         String numFilesString = this.progessCounter != this.numFiles ?
                 String.valueOf(this.progessCounter + " of " + this.numFiles) :
-                String.valueOf(this.progessCounter);
-
-                if (this.errors.isEmpty()) {
-            LOGGER.info("Processed " + numFilesString + " successfully!");
-        }
-        else {
-            LOGGER.info("Processed " + numFilesString + " of which " + this.errors.size() + " were in error:");
-            for (ErrorRecord record : this.errors) {
-                LOGGER.warn("\t" + record);
-            }
-        }
-
+                    String.valueOf(this.progessCounter);
+        
+        if (this.errors.isEmpty()) {
+                    LOGGER.info("Processed " + numFilesString + " successfully!");
+                }
+                else {
+                    LOGGER.info("Processed " + numFilesString + " of which " + this.errors.size() + " were in error:");
+                    for (ErrorRecord record : this.errors) {
+                        LOGGER.warn("\t" + record);
+                    }
+                }
+        
     }
-
+    
     @Override
     public void start() {
         System.out.print("Progress: 0% ");
         this.progessCounter = 0;
     }
-    
+
     @Override
     public void notifySuccess(File oldFile, File newFile) {
         this.progessCounter++;
-        if (this.progessCounter > this.nextPercentage) {
-            System.out.print(" " + (int) (this.progessCounter * 100 / (float) this.numFiles) + "% ");
+        int currentPercentage = (int) (this.progessCounter * 100 / (float) this.numFiles);
+        if (currentPercentage >= this.nextPercentage) {
+            System.out.print(" " + currentPercentage + "% ");
             if (this.precentagesToLog.hasNext()) {
                 this.nextPercentage = this.precentagesToLog.next();
             }
@@ -99,10 +100,10 @@ public class Statistics implements ProgressListener {
             System.out.print(".");
         }
     }
-    
+
     @Override
     public void end() {
-        System.out.print(" 100%");
+        System.out.println(" 100%");
     }
-    
+
 }

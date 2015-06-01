@@ -42,7 +42,7 @@ public class BatchProcessor {
     private static ImageFilter      imageFilter   = new ImageFilter();
     private static VideoFilter      videoFilter   = new VideoFilter();
 
-    public static void startBatchRun(File folderToProcess, Statistics statistics) {
+    public static void startBatchRun(File folderToProcess, Integer maxFiles, Statistics statistics) {
         
         File[] allTestFiles = folderToProcess.listFiles(new FilenameFilter() {
             @Override
@@ -79,11 +79,13 @@ public class BatchProcessor {
                     metadata.set(Metadata.CONTENT_TYPE, mimeType);
                     parser.parse(inStream2, handler, metadata, new ParseContext());
                 }
+                
                 fileCount++;
                 File newFile = processFile(fileCount, file, mimeType, metadata);
-
-                // remove me
                 statistics.notifySuccess(file, newFile);
+                
+                // stop if max-number limit is reached 
+                if (maxFiles != null && fileCount >= maxFiles) { return; }
             }
             catch (IOException | SAXException | TikaException | RuntimeException e) {
                 LOGGER.debug("Failed to process file '" + file + "'. Cause: " + e.getMessage());
