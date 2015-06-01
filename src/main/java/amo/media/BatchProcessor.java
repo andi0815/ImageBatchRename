@@ -30,27 +30,27 @@ import amo.media.io.VideoFilter;
  * @date 09.05.2015
  */
 public class BatchProcessor {
-    
+
     /** Logger Object for this Class */
     private static final Logger     LOGGER        = Logger.getLogger(BatchProcessor.class);
-    
+
     // beware this is not thread-safe!
     private static SimpleDateFormat importFormat  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
     private static SimpleDateFormat newFileprefix = new SimpleDateFormat("yyyyMMdd_HH'h'mm");
     private static SimpleDateFormat newFoldername = new SimpleDateFormat("yyyyMM' - Handybilder'");
-    
+
     private static ImageFilter      imageFilter   = new ImageFilter();
     private static VideoFilter      videoFilter   = new VideoFilter();
-    
-    public static void startBatchRun(File folderToProcess, Statistics statistics) {
 
+    public static void startBatchRun(File folderToProcess, Statistics statistics) {
+        
         File[] allTestFiles = folderToProcess.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(File directory, String filename) {
                 return imageFilter.accept(directory, filename) || videoFilter.accept(directory, filename);
             }
         });
-        
+
         if (allTestFiles.length == 0) {
             LOGGER.info("No files to move found.");
             return;
@@ -59,6 +59,7 @@ public class BatchProcessor {
             LOGGER.info("Processing " + allTestFiles.length + " files");
             statistics.setNumFiles(allTestFiles.length);
         }
+        statistics.start();
 
         Tika tika = new Tika();
         ContentHandler handler = new DefaultHandler();
@@ -66,7 +67,6 @@ public class BatchProcessor {
         int fileCount = 0;
         float nextLog = 0.1f;
         boolean reached50percent = false;
-        System.out.print("Progress: 0% ");
         for (File file : allTestFiles) {
             try {
                 String mimeType = null;
@@ -74,37 +74,26 @@ public class BatchProcessor {
                 try (
                         FileInputStream inStream = new FileInputStream(file);
                         FileInputStream inStream2 = new FileInputStream(file);) {
-
+                    
                     mimeType = tika.detect(inStream);
                     metadata.set(Metadata.CONTENT_TYPE, mimeType);
                     parser.parse(inStream2, handler, metadata, new ParseContext());
                 }
-                processFile(fileCount, file, mimeType, metadata);
-
-                // show progress
                 fileCount++;
-                if (fileCount / (float) allTestFiles.length > nextLog) {
-                    if (nextLog >= .5f && !reached50percent) {
-                        System.out.print("50% ");
-                        reached50percent = true;
-                    }
-                    else {
-                        System.out.print(". ");
-                    }
-                    float fileCountBased = (int) ((fileCount / (float) allTestFiles.length) * 100 + 10) / 100f;
-                    nextLog = Math.max(fileCountBased, nextLog + .1f);
-                }
+                File newFile = processFile(fileCount, file, mimeType, metadata);
+
+                // remove me
+                statistics.notifySuccess(file, newFile);
             }
             catch (IOException | SAXException | TikaException | RuntimeException e) {
                 LOGGER.debug("Failed to process file '" + file + "'. Cause: " + e.getMessage());
-                System.out.print("x ");
-                statistics.logError(file, e);
+                statistics.notifyError(file, e);
             }
         }
-        System.out.println("100%");
+        statistics.end();
     }
-
-    private static void processFile(int fileCount, File file, String mimeType, Metadata metadata) throws RuntimeException {
+    
+    private static File processFile(int fileCount, File file, String mimeType, Metadata metadata) throws RuntimeException {
         String creationDate = null;
         Date parsedDate = null;
         File newFile = null;
@@ -120,11 +109,12 @@ public class BatchProcessor {
                     LOGGER.warn("Failed to create subdirectory '" + newFolder + "' for file: '" + file.getName() + "'. skipping...");
                 }
             }
-            
+
             // move file
             newFile = new File(newFolder, newFileprefix.format(parsedDate) + "_" + file.getName());
             FileUtils.moveFile(file, newFile);
             LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t (" + creationDate + ")\t renamed to: '" + newFile + "'");
+            return newFile;
         }
         catch (ParseException | IOException e) {
             String message = "Failed to process file #" + fileCount + ": " + file.getName() + " newFile=" + newFile + " \t" + mimeType
