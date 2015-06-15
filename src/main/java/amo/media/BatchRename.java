@@ -35,6 +35,7 @@ public class BatchRename {
     public static void main(String[] args) {
         
         Integer maxFiles = null;
+        boolean doCreationDateFallback = false;
 
         ConsoleAppender consoleAppender = new ConsoleAppender(CONSOLE_LOG_PATTERN, "System.out");
         consoleAppender.setThreshold(Priority.INFO);
@@ -52,6 +53,7 @@ public class BatchRename {
         // create Options object
         Options options = new Options();
         options.addOption("v", false, "verbose mode");
+        options.addOption("c", false, "use file creation date, if date could not be extracted from metadata");
         options.addOption("max", "maxFiles", true, "Maximum number of files to process");
 
         CommandLineParser parser = new DefaultParser();
@@ -59,6 +61,9 @@ public class BatchRename {
             CommandLine cmd = parser.parse(options, args);
             if (cmd.hasOption("v")) {
                 consoleAppender.setThreshold(Priority.DEBUG);
+            }
+            if (cmd.hasOption("c")) {
+                doCreationDateFallback = true;
             }
             if (cmd.hasOption("max")) {
                 maxFiles = Integer.valueOf(cmd.getOptionValue("max"));
@@ -72,10 +77,10 @@ public class BatchRename {
                 LOGGER.error("Folder does not exist or is not a folder: '" + folderToProcess + "'");
                 printUsage(options, 1);
             }
-            printConfig(folderToProcess, maxFiles);
+            printConfig(folderToProcess, maxFiles, doCreationDateFallback);
             
             Statistics statistics = new Statistics();
-            BatchProcessor.startBatchRun(folderToProcess, maxFiles, statistics);
+            BatchProcessor.startBatchRun(folderToProcess, maxFiles, statistics, doCreationDateFallback);
             statistics.printStatistics();
         }
         catch (ParseException e) {
@@ -85,11 +90,15 @@ public class BatchRename {
         LOGGER.info("DONE.");
     }
     
-    private static void printConfig(File folderToProcess, Integer maxFiles) {
+    private static void printConfig(File folderToProcess, Integer maxFiles, boolean doCreationDateFallback) {
         LOGGER.info("Starting with folder: \t\t\t" + folderToProcess);
+        if (doCreationDateFallback) {
+            LOGGER.info("Using file creation date, if creation date could not be found in metadata");
+        }
         if (maxFiles != null) {
             LOGGER.info("Maximum number of files to process: \t" + maxFiles);
         }
+        // only to be seen in verbose mode...
         LOGGER.debug("Verbose mode enabled");
     }
 

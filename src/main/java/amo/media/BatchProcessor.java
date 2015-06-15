@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -42,7 +44,7 @@ public class BatchProcessor {
     private static ImageFilter      imageFilter   = new ImageFilter();
     private static VideoFilter      videoFilter   = new VideoFilter();
 
-    public static void startBatchRun(File folderToProcess, Integer maxFiles, Statistics statistics) {
+    public static void startBatchRun(File folderToProcess, Integer maxFiles, Statistics statistics, boolean doCreationDateFallback) {
         
         File[] allTestFiles = folderToProcess.listFiles(new FilenameFilter() {
             @Override
@@ -81,10 +83,10 @@ public class BatchProcessor {
                 }
                 
                 fileCount++;
-                File newFile = processFile(fileCount, file, mimeType, metadata);
+                File newFile = processFile(fileCount, file, mimeType, metadata, doCreationDateFallback);
                 statistics.notifySuccess(file, newFile);
                 
-                // stop if max-number limit is reached 
+                // stop if max-number limit is reached
                 if (maxFiles != null && fileCount >= maxFiles) { return; }
             }
             catch (IOException | SAXException | TikaException | RuntimeException e) {
@@ -95,15 +97,29 @@ public class BatchProcessor {
         statistics.end();
     }
     
-    private static File processFile(int fileCount, File file, String mimeType, Metadata metadata) throws RuntimeException {
+    private static File processFile(int fileCount, File file, String mimeType, Metadata metadata, boolean doCreationDateFallback)
+            throws RuntimeException {
         String creationDate = null;
         Date parsedDate = null;
         File newFile = null;
         try {
             creationDate = metadata.get("Creation-Date");
-            if (creationDate == null) { throw new IllegalStateException("Creation-Date is not present in file: " + file); }
-            LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t " + mimeType + "\t Creation-Date: " + creationDate + "\t IS: " + parsedDate);
-            parsedDate = importFormat.parse(creationDate);
+            if (creationDate != null) {
+                LOGGER.debug(" #" + fileCount + ": \t" + file.getName() + "\t " + mimeType + "\t Creation-Date: " + creationDate + "\t IS: "
+                        + parsedDate);
+                parsedDate = importFormat.parse(creationDate);
+            }
+            else { // creation date could not be determined
+                if (doCreationDateFallback) {
+                    // option...
+                    BasicFileAttributes attributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+                    parsedDate = new Date(attributes.creationTime().toMillis());
+                    LOGGER.debug("Creation-Date is not present, using file created date: " + parsedDate);
+                }
+                else {
+                    throw new IllegalStateException("Creation-Date is not present in file: " + file);
+                }
+            }
             // Create folder for new files
             File newFolder = new File(file.getParent() + File.separator + newFoldername.format(parsedDate));
             if (!newFolder.exists()) {
